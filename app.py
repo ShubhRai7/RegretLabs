@@ -1,5 +1,17 @@
-import streamlit as st
+import json
+
 import pandas as pd
+import streamlit as st
+
+from ai import get_coaching
+from rules import RULES, replay_with_rules
+from strategy import (
+    buy_and_hold,
+    buy_the_dip,
+    check_trades,
+    missed_signals,
+    player_values,
+)
 
 st.set_page_config(page_title="Regret Replay", layout="wide")
 
@@ -7,6 +19,7 @@ prices = pd.read_csv("data/prices_period1.csv")
 stocks = [c for c in prices.columns if c != "Day"]
 START_CASH = 100000
 
+# ---------- GAME MEMORY ----------
 # Set up a fresh game the first time the page loads
 if "day" not in st.session_state:
     st.session_state.day = 0
@@ -16,6 +29,7 @@ if "day" not in st.session_state:
     st.session_state.msg = ""
 
 
+# ---------- GAME FUNCTIONS ----------
 def price_today(stock):
     return float(prices.loc[st.session_state.day, stock])
 
@@ -28,6 +42,11 @@ def next_day():
     if st.session_state.day < len(prices) - 1:
         st.session_state.day += 1
         st.session_state.msg = ""
+
+
+def skip_ten():
+    st.session_state.day = min(st.session_state.day + 10, len(prices) - 1)
+    st.session_state.msg = ""
 
 
 def trade(action):
@@ -56,41 +75,63 @@ def trade(action):
             "action": action,
             "quantity": qty,
             "price": round(price, 2),
+            "total": round(cost, 2),
         }
     )
-    st.session_state.msg = f"Done: {action} {qty} of {stock} at ₹{price:,.2f}"
+    st.session_state.msg = (
+        f"Done: {action} {qty} of {stock} at ₹{price:,.2f} each. Total: ₹{cost:,.2f}"
+    )
 
 
+# ---------- TOP OF THE PAGE ----------
 st.title("Regret Replay")
 st.caption("Pretend money. Real market history, with names and dates hidden.")
 
 day_number = int(prices.loc[st.session_state.day, "Day"])
 total = st.session_state.cash + holdings_value()
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Day", f"{day_number} of {len(prices)}")
-c2.metric("Cash", f"₹{st.session_state.cash:,.0f}")
-c3.metric("Shares worth", f"₹{holdings_value():,.0f}")
-c4.metric("Total value", f"₹{total:,.0f}")
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Day", f"{day_number} of {len(prices)}")
+m2.metric("Cash", f"₹{st.session_state.cash:,.0f}")
+m3.metric("Shares worth", f"₹{holdings_value():,.0f}")
+m4.metric("Total value", f"₹{total:,.0f}")
 
 st.subheader("Prices so far")
 st.line_chart(prices.set_index("Day").iloc[: st.session_state.day + 1])
 
+# ---------- YOUR MOVE ----------
 st.subheader("Your move")
-a, b, c, d = st.columns([2, 1, 1, 1])
-a.selectbox("Stock", stocks, key="sel_stock")
-b.number_input("How many shares", min_value=1, value=10, step=1, key="qty")
-c.button("Buy", on_click=trade, args=("BUY",), use_container_width=True)
-d.button("Sell", on_click=trade, args=("SELL",), use_container_width=True)
+col_stock, col_qty, col_buy, col_sell = st.columns([2, 1, 1, 1])
+col_stock.selectbox("Stock", stocks, key="sel_stock")
+col_qty.number_input("How many shares", min_value=1, value=10, step=1, key="qty")
+col_buy.button("Buy", on_click=trade, args=("BUY",), use_container_width=True)
+col_sell.button("Sell", on_click=trade, args=("SELL",), use_container_width=True)
+
+sel = st.session_state.sel_stock
+qty_now = int(st.session_state.qty)
+unit_price = price_today(sel)
+order_total = unit_price * qty_now
+st.write(
+    f"**Order total:** ₹{unit_price:,.2f} × {qty_now} shares = **₹{order_total:,.2f}**"
+)
+st.caption(
+    f"You have ₹{st.session_state.cash:,.0f} cash and own "
+    f"{st.session_state.shares[sel]} shares of {sel}."
+)
+if order_total > st.session_state.cash:
+    st.warning("This order is bigger than your cash, so a Buy would be blocked.")
 
 if st.session_state.msg:
     st.info(st.session_state.msg)
 
-st.button("Next Day ➜", on_click=next_day, type="primary")
+col_next, col_skip = st.columns([1, 2])
+col_next.button("Next Day ➜", on_click=next_day, type="primary")
+col_skip.button("Fast-forward 10 days (for testing)", on_click=skip_ten)
 
 if st.session_state.day == len(prices) - 1:
     st.success("The period is over. Final value: ₹{:,.0f}".format(total))
 
+# ---------- WHAT YOU OWN, TRADE RECORD ----------
 st.subheader("What you own today")
 owned = pd.DataFrame(
     {
@@ -107,17 +148,7 @@ if st.session_state.trades:
 else:
     st.write("No trades yet.")
 
-# ---------- RESULTS ----------
-from strategy import buy_and_hold, buy_the_dip, player_values
-
-
-def skip_ten():
-    st.session_state.day = min(st.session_state.day + 10, len(prices) - 1)
-    st.session_state.msg = ""
-
-
-st.button("Fast-forward 10 days (for testing)", on_click=skip_ten)
-
+# ---------- RESULTS: YOU vs THE PLAN vs BUY AND HOLD ----------
 st.divider()
 st.header("Results so far")
 
@@ -146,8 +177,6 @@ gap = plan.iloc[-1] - mine.iloc[-1]
 st.write(f"Plan minus you: **₹{gap:,.0f}**")
 
 # ---------- DID YOU FOLLOW THE PLAN? ----------
-from strategy import check_trades, missed_signals
-
 st.divider()
 st.header("Did you follow the plan?")
 
@@ -165,10 +194,10 @@ else:
     off = checked[checked["Followed plan?"] != "Yes"]
     score = (len(checked) - len(off)) / len(checked) * 100
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Discipline score", f"{score:.0f}%")
-    m2.metric("Off-plan trades", f"{len(off)} of {len(checked)}")
-    m3.metric(
+    f1, f2, f3 = st.columns(3)
+    f1.metric("Discipline score", f"{score:.0f}%")
+    f2.metric("Off-plan trades", f"{len(off)} of {len(checked)}")
+    f3.metric(
         "Result of off-plan trades",
         f"₹{off['Result after 10 days (Rs)'].sum():,.0f}",
     )
@@ -182,10 +211,6 @@ else:
         st.dataframe(missed, hide_index=True)
 
 # ---------- AI COACH AND BETTER-HABITS RULES ----------
-import json
-from ai import get_coaching
-from rules import RULES, replay_with_rules
-
 st.divider()
 st.header("Your coaching report")
 
@@ -206,7 +231,7 @@ else:
             "discipline_score_percent": round(score2),
             "off_plan_trade_list": off2.head(10).to_dict("records"),
         }
-        with st.spinner("Your coach is thinking..."):
+        with st.spinner("Your coach is thinking (this can take up to a minute)..."):
             st.session_state.coach = get_coaching(facts, RULES)
 
     coach = st.session_state.get("coach")
@@ -221,21 +246,21 @@ else:
             prices, stocks, st.session_state.trades, START_CASH, last, coach["rules"]
         )
 
-        st.subheader("Before and after")        #<- same column
-        compare = pd.DataFrame(                 #<- same column
+        st.subheader("Before and after")
+        compare = pd.DataFrame(
             {
                 "Your real trades": mine.values,
                 "Your trades with the rules": better.values,
             },
             index=prices["Day"].iloc[: last + 1],
         )
-        if not blocked:                         #<- same column
+        if not blocked:
             st.info(
                 "None of your trades broke these rules, so both lines are identical "
                 "and sit on top of each other. Try a round with a panic sell or "
                 "a chase-the-rise buy to see the difference."
             )
-        st.line_chart(compare)                  #<- same column
+        st.line_chart(compare)
 
         b1, b2, b3 = st.columns(3)
         b1.metric("Without rules", f"₹{mine.iloc[-1]:,.0f}")
@@ -246,7 +271,9 @@ else:
         if diff > 0:
             st.success("In this round, following these rules would have helped you.")
         else:
-            st.warning("In this round, these rules would not have helped. That is useful to know too.")
+            st.warning(
+                "In this round, these rules would not have helped. That is useful to know too."
+            )
 
         if blocked:
             with st.expander("Trades the rules would have blocked"):
