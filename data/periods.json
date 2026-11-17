@@ -1,0 +1,34 @@
+{
+  "periods": [
+    {
+      "number": 1,
+      "prices_file": "prices_period1.csv",
+      "key_file": "answer_key_period1.json",
+      "days": 122
+    },
+    {
+      "number": 2,
+      "prices_file": "prices_period2.csv",
+      "key_file": "answer_key_period2.json",
+      "days": 123
+    },
+    {
+      "number": 3,
+      "prices_file": "prices_period3.csv",
+      "key_file": "answer_key_period3.json",
+      "days": 124
+    },
+    {
+      "number": 4,
+      "prices_file": "prices_period4.csv",
+      "key_file": "answer_key_period4.json",
+      "days": 122
+    },
+    {
+      "number": 5,
+      "prices_file": "prices_period5.csv",
+      "key_file": "answer_key_period5.json",
+      "days": 123
+    }
+  ]
+}

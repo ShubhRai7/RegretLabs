@@ -1,4 +1,5 @@
 import json
+import os
 
 import pandas as pd
 import streamlit as st
@@ -6,30 +7,56 @@ import streamlit as st
 from ai import get_coaching
 from rules import RULES, replay_with_rules
 from strategy import (
+    STRATEGIES,
     buy_and_hold,
-    buy_the_dip,
     check_trades,
     missed_signals,
     player_values,
+    run_plan,
 )
 
 st.set_page_config(page_title="Regret Replay", layout="wide")
 
-prices = pd.read_csv("data/prices_period1.csv")
-stocks = [c for c in prices.columns if c != "Day"]
 START_CASH = 100000
+STOCK_NAMES = ["Stock A", "Stock B", "Stock C", "Stock D", "Stock E"]
 
-# ---------- GAME MEMORY ----------
-# Set up a fresh game the first time the page loads
-if "day" not in st.session_state:
-    st.session_state.day = 0
-    st.session_state.cash = START_CASH
-    st.session_state.shares = {s: 0 for s in stocks}
-    st.session_state.trades = []
-    st.session_state.msg = ""
+
+# ---------- LOADING DATA ----------
+@st.cache_data
+def load_prices(file_name):
+    return pd.read_csv(f"data/{file_name}")
+
+
+def load_periods():
+    """The list of scenarios. Falls back to a single scenario if get_data.py was not re-run."""
+    try:
+        with open("data/periods.json") as f:
+            found = json.load(f)["periods"]
+        found = [p for p in found if os.path.exists(f"data/{p['prices_file']}")]
+        if found:
+            return found
+    except Exception:
+        pass
+    return [
+        {
+            "number": 1,
+            "prices_file": "prices_period1.csv",
+            "key_file": "answer_key.json",
+            "days": None,
+        }
+    ]
 
 
 # ---------- GAME FUNCTIONS ----------
+def reset_game():
+    st.session_state.day = 0
+    st.session_state.cash = START_CASH
+    st.session_state.shares = {s: 0 for s in STOCK_NAMES}
+    st.session_state.trades = []
+    st.session_state.msg = ""
+    st.session_state.pop("coach", None)
+
+
 def price_today(stock):
     return float(prices.loc[st.session_state.day, stock])
 
@@ -83,13 +110,97 @@ def trade(action):
     )
 
 
-# ---------- TOP OF THE PAGE ----------
+# Set up a fresh game the first time the page loads
+if "day" not in st.session_state:
+    reset_game()
+
+# ---------- TITLE ----------
 st.title("Regret Replay")
 st.caption("Pretend money. Real market history, with names and dates hidden.")
 
+locked = st.session_state.day > 0 or len(st.session_state.trades) > 0
+
+# ---------- STEP 1: CHOOSE YOUR SCENARIO ----------
+periods = load_periods()
+by_number = {p["number"]: p for p in periods}
+
+st.subheader("Step 1: Choose a scenario")
+st.selectbox(
+    "Scenario (each one is a different stretch of real market history)",
+    list(by_number.keys()),
+    format_func=lambda n: f"Scenario {n}"
+    + (f"  ({by_number[n]['days']} trading days)" if by_number[n]["days"] else ""),
+    key="period_no",
+    disabled=locked,
+)
+period = by_number[st.session_state.period_no]
+st.caption(
+    "You won't be told which years or which companies. That is revealed at the end."
+)
+if len(periods) == 1:
+    st.info(
+        "Only 1 scenario found. Run `python get_data.py` in the terminal to create the other 4."
+    )
+
+prices = load_prices(period["prices_file"])
+stocks = [c for c in prices.columns if c != "Day"]
+
+# ---------- STEP 2: CHOOSE YOUR PLAN ----------
+plan_ids = list(STRATEGIES.keys())
+
+st.subheader("Step 2: Choose your plan")
+st.selectbox(
+    "Your plan (open the list to see all 5)",
+    plan_ids,
+    format_func=lambda p: f"{STRATEGIES[p]['name']}  —  {STRATEGIES[p]['tagline']}",
+    key="plan_id",
+    disabled=locked,
+)
+plan_id = st.session_state.plan_id
+plan_info = STRATEGIES[plan_id]
+
+with st.container(border=True):
+    st.markdown(f"### {plan_info['name']}")
+    st.write(plan_info["tagline"])
+    st.markdown(
+        f"**Buys when:** {plan_info['buy_when']}\n\n"
+        f"**Sells when:** {plan_info['sell_when']}\n\n"
+        f"**How the money is used:** {plan_info['money']}\n\n"
+        f"**Personality:** {plan_info['style']}\n\n"
+        f"**Works best when:** {plan_info['best_when']}\n\n"
+        f"**Struggles when:** {plan_info['struggles_when']}"
+    )
+
+with st.expander("Compare all 5 plans side by side"):
+    rows = []
+    for pid in plan_ids:
+        info = STRATEGIES[pid]
+        rows.append(
+            {
+                "Plan": info["name"],
+                "Buys when": info["buy_when"],
+                "Sells when": info["sell_when"],
+                "Personality": info["style"],
+                "Works best when": info["best_when"],
+                "Struggles when": info["struggles_when"],
+            }
+        )
+    st.table(pd.DataFrame(rows).set_index("Plan"))
+
+if locked:
+    st.caption(
+        "Your scenario and plan are locked once the game starts, so you can't change "
+        "your mind halfway. Press 'Restart game' further down to pick again."
+    )
+
+# The plan trades on its own over the same prices (used for all comparisons)
+plan_values, plan_signals = run_plan(plan_id, prices, stocks, START_CASH)
+
+# ---------- TOP OF THE PAGE ----------
 day_number = int(prices.loc[st.session_state.day, "Day"])
 total = st.session_state.cash + holdings_value()
 
+st.subheader("Step 3: Play")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Day", f"{day_number} of {len(prices)}")
 m2.metric("Cash", f"₹{st.session_state.cash:,.0f}")
@@ -99,11 +210,24 @@ m4.metric("Total value", f"₹{total:,.0f}")
 st.subheader("Prices so far")
 st.line_chart(prices.set_index("Day").iloc[: st.session_state.day + 1])
 
+# ---------- WHAT THE PLAN SAYS TODAY ----------
+st.subheader("What your plan says today")
+today_signals = [s for s in plan_signals if s["day"] == day_number]
+if today_signals:
+    lines = ", ".join(f"{s['action']} {s['stock']}" for s in today_signals)
+    st.success(f"**{plan_info['name']}** says: **{lines}**")
+else:
+    st.info(f"**{plan_info['name']}** says: **do nothing today (hold).**")
+st.caption(
+    "You don't have to obey it. But every time you do something different, "
+    "the app counts it as going off plan."
+)
+
 # ---------- YOUR MOVE ----------
 st.subheader("Your move")
 col_stock, col_qty, col_buy, col_sell = st.columns([2, 1, 1, 1])
 col_stock.selectbox("Stock", stocks, key="sel_stock")
-col_qty.number_input("How many shares", min_value=1, value=10, step=1, key="qty")
+col_qty.number_input("How many shares", min_value=1, value=100, step=1, key="qty")
 col_buy.button("Buy", on_click=trade, args=("BUY",), use_container_width=True)
 col_sell.button("Sell", on_click=trade, args=("SELL",), use_container_width=True)
 
@@ -124,9 +248,10 @@ if order_total > st.session_state.cash:
 if st.session_state.msg:
     st.info(st.session_state.msg)
 
-col_next, col_skip = st.columns([1, 2])
+col_next, col_skip, col_restart = st.columns([1, 2, 1])
 col_next.button("Next Day ➜", on_click=next_day, type="primary")
 col_skip.button("Fast-forward 10 days (for testing)", on_click=skip_ten)
+col_restart.button("Restart game", on_click=reset_game)
 
 if st.session_state.day == len(prices) - 1:
     st.success("The period is over. Final value: ₹{:,.0f}".format(total))
@@ -155,13 +280,12 @@ st.header("Results so far")
 last = st.session_state.day
 mine = player_values(prices, stocks, st.session_state.trades, START_CASH, last)
 hold = buy_and_hold(prices, stocks, START_CASH).iloc[: last + 1]
-plan, plan_signals = buy_the_dip(prices, stocks, START_CASH)
-plan = plan.iloc[: last + 1]
+plan = plan_values.iloc[: last + 1]
 
 chart = pd.DataFrame(
     {
         "You": mine.values,
-        "Plan on autopilot (buy the dip)": plan.values,
+        f"Plan on autopilot ({plan_info['name']})": plan.values,
         "Buy and hold": hold.values,
     },
     index=prices["Day"].iloc[: last + 1],
@@ -180,7 +304,7 @@ st.write(f"Plan minus you: **₹{gap:,.0f}**")
 st.divider()
 st.header("Did you follow the plan?")
 
-with st.expander("See what the plan did on autopilot"):
+with st.expander("See everything the plan did on autopilot"):
     shown = [s for s in plan_signals if s["day"] - 1 <= last]
     if shown:
         st.dataframe(pd.DataFrame(shown), hide_index=True)
@@ -214,6 +338,13 @@ else:
 st.divider()
 st.header("Your coaching report")
 
+has_groq = bool(os.environ.get("GROQ_API_KEY"))
+has_gemini = bool(os.environ.get("GEMINI_API_KEY"))
+st.caption(
+    "AI keys found in this terminal: "
+    f"Groq {'✅' if has_groq else '❌'}  |  Gemini {'✅' if has_gemini else '❌'}"
+)
+
 if not st.session_state.trades:
     st.write("Make some trades first, then come back here.")
 else:
@@ -222,6 +353,9 @@ else:
         off2 = checked2[checked2["Followed plan?"] != "Yes"]
         score2 = (len(checked2) - len(off2)) / len(checked2) * 100
         facts = {
+            "plan_name": plan_info["name"],
+            "plan_buys_when": plan_info["buy_when"],
+            "plan_sells_when": plan_info["sell_when"],
             "days_played": last + 1,
             "your_final_value": round(float(mine.iloc[-1])),
             "plan_final_value": round(float(plan.iloc[-1])),
@@ -283,10 +417,13 @@ else:
 if st.session_state.day == len(prices) - 1:
     st.divider()
     st.header("The big reveal")
-    with open("data/answer_key.json") as f:
+    with open(f"data/{period['key_file']}") as f:
         key_data = json.load(f)
     st.write(
-        f"You were trading from **{key_data['dates'][0]}** to **{key_data['dates'][-1]}**."
+        f"Scenario {period['number']} was **{key_data['dates'][0]}** to "
+        f"**{key_data['dates'][-1]}**."
     )
+    if key_data.get("story"):
+        st.write(key_data["story"])
     for name, ticker in key_data["companies"].items():
         st.write(f"- {name} was **{ticker.replace('.NS', '')}**")

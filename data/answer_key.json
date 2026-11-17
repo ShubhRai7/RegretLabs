@@ -1,10 +1,10 @@
 {
   "companies": {
-    "Stock A": "RELIANCE.NS",
-    "Stock B": "TCS.NS",
-    "Stock C": "HDFCBANK.NS",
-    "Stock D": "INFY.NS",
-    "Stock E": "ITC.NS"
+    "Stock A": "HDFCBANK.NS",
+    "Stock B": "INFY.NS",
+    "Stock C": "ITC.NS",
+    "Stock D": "RELIANCE.NS",
+    "Stock E": "TCS.NS"
   },
   "dates": [
     "2020-02-03",
@@ -129,5 +129,6 @@
     "2020-07-29",
     "2020-07-30",
     "2020-07-31"
-  ]
+  ],
+  "story": "The 2020 crash and recovery: a very sharp fall, then a fast bounce back."
 }
