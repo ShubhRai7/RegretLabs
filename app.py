@@ -17,6 +17,160 @@ from strategy import (
 
 st.set_page_config(page_title="Regret Replay", layout="wide")
 
+# ===== REGRET REPLAY — MIDNIGHT LEDGER THEME =====
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+    --rr-bg: #080d16;
+    --rr-panel: #101925;
+    --rr-border: rgba(160,180,205,.13);
+    --rr-text: #edf2f7;
+    --rr-muted: #8d9bad;
+    --rr-green: #55c59a;
+    --rr-amber: #e5b76a;
+}
+
+.stApp {
+    background:
+        radial-gradient(ellipse at 12% 0%, rgba(42,92,87,.16), transparent 34%),
+        radial-gradient(ellipse at 92% 10%, rgba(57,76,112,.14), transparent 30%),
+        var(--rr-bg);
+    color: var(--rr-text);
+    font-family: 'DM Sans', sans-serif;
+}
+
+[data-testid="stHeader"] {
+    background: rgba(8,13,22,.72);
+}
+
+.block-container {
+    max-width: 1440px;
+    padding-top: 2.1rem;
+    padding-bottom: 4rem;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Manrope', sans-serif !important;
+    letter-spacing: -.035em;
+    color: var(--rr-text) !important;
+}
+
+h1 {
+    font-size: clamp(2.1rem,4vw,3.25rem) !important;
+    font-weight: 800 !important;
+}
+
+[data-testid="stMetric"] {
+    background: linear-gradient(145deg,#152231,#0e1824);
+    border: 1px solid var(--rr-border);
+    border-radius: 14px;
+    padding: 17px 18px;
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--rr-muted) !important;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+[data-testid="stMetricValue"] {
+    color: var(--rr-text) !important;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 750;
+}
+
+.stButton > button {
+    background: #172536;
+    color: #eaf2f7;
+    border: 1px solid var(--rr-border);
+    border-radius: 10px;
+    min-height: 2.65rem;
+    font-weight: 650;
+}
+
+.stButton > button:hover {
+    border-color: var(--rr-green);
+    color: #a5ebce;
+    background: #1b3040;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg,#56c69a,#329b77);
+    color: #071710;
+    border: 0;
+}
+
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div {
+    background: #111e2c !important;
+    border-color: var(--rr-border) !important;
+    border-radius: 10px !important;
+}
+
+div[data-testid="stExpander"] {
+    border-color: var(--rr-border) !important;
+    border-radius: 14px !important;
+    background: rgba(16,25,37,.72);
+}
+
+hr {
+    border-color: var(--rr-border) !important;
+}
+
+@media (max-width: 700px) {
+    .block-container {
+        padding: 1.2rem 1rem 3rem;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ===== REGRETLABS BRANDING =====
+
+st.markdown("""
+<div style="
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 18px;
+    margin-bottom:24px;
+    border:1px solid rgba(160,180,205,.13);
+    border-radius:14px;
+    background:linear-gradient(110deg,#142130,#0d1622);
+">
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div style="
+            width:34px;height:34px;
+            border-radius:10px;
+            display:grid;place-items:center;
+            background:#55c59a;
+            color:#07140f;
+            font-weight:800;
+        ">R</div>
+        <div>
+            <div style="font-weight:800;color:#f2f6fa;">
+                REGRET REPLAY
+            </div>
+            <div style="
+                color:#91a1b4;
+                font-size:10px;
+                letter-spacing:2px;
+            ">BY SHREEMANT</div>
+        </div>
+    </div>
+    <div style="
+        color:#9eacbd;
+        font-size:10px;
+        letter-spacing:1px;
+    ">THE MIDNIGHT LEDGER</div>
+</div>
+""", unsafe_allow_html=True)
+
+
 START_CASH = 100000
 STOCK_NAMES = ["Stock A", "Stock B", "Stock C", "Stock D", "Stock E"]
 
