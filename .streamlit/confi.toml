@@ -1,0 +1,14 @@
+# Regret Replay - Midnight Ledger base theme (visual only)
+[theme]
+base = "dark"
+primaryColor = "#3fd49b"
+backgroundColor = "#080d16"
+secondaryBackgroundColor = "#101925"
+textColor = "#edf2f7"
+borderColor = "#1f2d40"
+baseRadius = "medium"
+font = "sans serif"
+
+[theme.sidebar]
+backgroundColor = "#0a111c"
+secondaryBackgroundColor = "#101925"
