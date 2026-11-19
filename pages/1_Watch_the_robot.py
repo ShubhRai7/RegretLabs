@@ -272,47 +272,74 @@ div[data-testid="stExpander"] {
 # ===== REGRETLABS BRANDING =====
 
 st.markdown("""
-<div style="
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:14px 18px;
-    margin-bottom:24px;
-    border:1px solid rgba(160,180,205,.13);
-    border-radius:14px;
-    background:linear-gradient(110deg,#142130,#0d1622);
-">
-    <div style="display:flex;align-items:center;gap:12px;">
-        <div style="
-            width:34px;height:34px;
-            border-radius:10px;
-            display:grid;place-items:center;
-            background:#55c59a;
-            color:#07140f;
-            font-weight:800;
-        ">R</div>
-        <div>
-            <div style="font-weight:800;color:#f2f6fa;">
-                REGRET REPLAY
-            </div>
-            <div style="
-                color:#91a1b4;
-                font-size:10px;
-                letter-spacing:2px;
-            ">BY SHREEMANT</div>
-        </div>
-    </div>
-    <div style="
-        color:#9eacbd;
-        font-size:10px;
-        letter-spacing:1px;
-    ">THE MIDNIGHT LEDGER</div>
+<style>
+.rr-brand-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    padding: 14px 20px;
+    margin-bottom: 28px;
+    border: 1px solid rgba(160,180,205,.13);
+    border-radius: 16px;
+    background: linear-gradient(110deg, #142130, #0d1622);
+    box-shadow: 0 8px 28px rgba(0,0,0,.18);
+}
+
+.rr-brand-mark {
+    justify-self: start;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: #3fd49b;
+    color: #07140f;
+    font-family: 'Manrope', sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    box-shadow: 0 0 14px rgba(63,212,155,.22);
+}
+
+.rr-brand-wordmark {
+    text-align: center;
+    white-space: nowrap;
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 900;
+    letter-spacing: .13em;
+    padding-left: .13em; /* offsets trailing letter-spacing so the text is optically centred */
+    color: #edf2f7;
+    text-shadow: 0 0 24px rgba(63,212,155,.12);
+}
+
+.rr-brand-tagline {
+    justify-self: end;
+    white-space: nowrap;
+    color: #8d9bad;
+    font-size: 9px;
+    letter-spacing: .17em;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    /* keeps the empty right column so the wordmark stays centred */
+    .rr-brand-tagline { visibility: hidden; }
+}
+
+@media (max-width: 600px) {
+    .rr-brand-header { padding: 12px 14px; margin-bottom: 20px; }
+    .rr-brand-mark { width: 28px; height: 28px; font-size: 16px; }
+    .rr-brand-wordmark { font-size: 19px; letter-spacing: .1em; padding-left: .1em; }
+}
+</style>
+<div class="rr-brand-header">
+<div class="rr-brand-mark">R</div>
+<div class="rr-brand-wordmark">REGRETLABS</div>
+<div class="rr-brand-tagline">THINK CLEARER. DECIDE BETTER.</div>
 </div>
 """, unsafe_allow_html=True)
-
-
 START_CASH = 100000
-
+STOCK_NAMES = ["Stock A", "Stock B", "Stock C", "Stock D", "Stock E"]
 
 # ---------- LOADING DATA ----------
 @st.cache_data
