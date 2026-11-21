@@ -1,4 +1,4 @@
-# Regret Replay — by RegretLabs
+<img width="1052" height="540" alt="image" src="https://github.com/user-attachments/assets/09d881d3-f1ca-4706-b4c2-698d10ec3f2e" /># Regret Replay — by Shreemant
 **Trade smarter. Regret less.**
 
 An AI-coached practice-investing game, built for the Arthaton 2026 AI FinTech hackathon.
@@ -93,3 +93,8 @@ This is a prototype.
 ## Safety
 Paper money and historical data only. No real trades, no bank details, no personal
 data and no API keys in this repository. This is a learning tool, not investment advice.
+
+## Contributors
+Shubh Rai
+Manav Parimal Kamdar
+Renu Sri Nitya Gowravajjala
